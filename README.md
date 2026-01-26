@@ -18,7 +18,7 @@ Es zeigt:
 
 ## Setup:
 
-### PostgreSQL vorbereiten
+### 1) PostgreSQL vorbereiten
 - Datenbank `atruvia_demo` erstellen
 - Benutzer `atruvia_user` anlegen (Passwort z. B. `atruvia2026`) und Rechte vergeben (benötigt Berechtigung für 'TRUNCATE' und Daten einzufügen)
 
@@ -26,3 +26,12 @@ Es zeigt:
 CREATE DATABASE atruvia_demo;
 CREATE USER atruvia_user WITH PASSWORD 'atruvia2026';
 GRANT ALL PRIVILEGES ON DATABASE atruvia_demo TO atruvia_user;
+```
+
+### 2) Python vorbereiten
+- Python 3 muss installiert sein
+- Installiere das benötigte Package für PostgreSQL:
+
+```bash
+pip install psycopg2-binary
+```
