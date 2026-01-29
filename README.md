@@ -17,9 +17,9 @@ Dieses Demo-Projekt wurde im Rahmen meiner Bewerbung auf eine Werkstudentenstell
 ## Projektstruktur
 ```text
 sql-automation/
-├── schema.sql      # Datenbankschema (Tabellen, ENUMs, Indizes)
+├── README.md
 ├── main.py         # Hauptprogramm + Demo-Daten + Reports
-└── README.md
+└── schema.sql      # Datenbankschema (Tabellen, ENUMs, Indizes)
 ```
 
 ## Setup (~2 Minuten)
