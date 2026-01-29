@@ -27,7 +27,7 @@ print("""
 --------------------------------------------------
 ATRUVIA DEMO - PostgreSQL + Python automation
 --------------------------------------------------
-""")
+\n""")
 
 # Connection to database as 'atruvia_user' (superuser)
 conn = psycopg2.connect(
@@ -213,6 +213,42 @@ def city_revenue_report() -> list[dict]:
 
 
 
+def status_report() -> list[dict]:
+    """
+    This method calculates orders and revenue per order status.
+    
+    Returns:
+        list[dict]: List of status reports as Dict objects:
+            - status (str): Order name for each status
+            - status_revenue (float): Total revenue for each status
+            - status_orders (int): Number of orders for each status
+        
+    Raises:
+        psycopg2.Error: if database operation fails
+    """
+    
+    try:
+        with conn: # Auto commit/rollback ensures transaction safety
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT
+                        o.status,
+                        COALESCE(SUM(o.amount), 0) AS status_revenue,
+                        COUNT(o.id) AS status_orders   
+                    FROM orders o
+                    GROUP BY o.status
+                    ORDER BY status_revenue DESC;
+                    """
+                )
+                return cur.fetchall()
+            
+    except Exception as e:
+        print(f"Failed to create the status report: {e}")
+        raise
+
+
+
 #  Demo execution:
 if __name__ == "__main__":
     
@@ -236,6 +272,12 @@ if __name__ == "__main__":
     city_revenue = city_revenue_report()
     for row in city_revenue:
         print(f"   {row['city']}: {row['city_orders']} order(s), {row['city_revenue']}€")
+
+    # 4. Evaluation: STATUS SALES REPORT
+    print("\nSTATUS SALES REPORT:")
+    status_data = status_report()
+    for row in status_data:
+        print(f"  {row['status']}: {row['status_orders']} order(s), {row['status_revenue']}€")
 
     conn.close()
     
