@@ -45,14 +45,21 @@ Die Demo-Daten werden beim ersten Start automatisch eingefügt.
 ATRUVIA DEMO - PostgreSQL + Python automation
 --------------------------------------------------
 
-Demo data has been reset for (3 customers, 4 orders)
+Demo data has been reset for (4 customers, 4 orders)
 
 NEW ORDER: ID 5 for Max Mustermann
 
-SALES REPORT:
-   Fremder Unbekannter Kunde (Geheimstadt): 1 order(s), €1250.75
-   Max Mustermann (Karlsruhe): 3 order(s), €770.60
-   Emanuel Wambold (Woerth am Rhein): 1 order(s), €0.50
+CUSTOMER SALES REPORT:
+   Fremder Unbekannter Kunde (Geheimstadt): 1 order(s), 1250.75€
+   Max Mustermann (Karlsruhe): 3 order(s), 826.33€
+   Emanuel Wambold (Woerth am Rhein): 1 order(s), 0.50€
+   Keine Stadt (Unbekannt): 0 order(s), 0€
+
+CITY SALES REPORT:
+   Karlsruhe: 1 order(s), 450.00€
+   Woerth am Rhein: 1 order(s), 0.50€
+   Unbekannt: 0 order(s), 0€
+   Geheimstadt: 0 order(s), 0€
 
 
 --------------------------------------------------

@@ -8,7 +8,8 @@ from random import uniform as randomFloat
 DEMO_CUSTOMERS = [
     ('Max', None, 'Mustermann', 'Karlsruhe'),
     ('Emanuel', None, 'Wambold', 'Woerth am Rhein'),
-    ('Fremder', 'Unbekannter', 'Kunde', 'Geheimstadt')
+    ('Fremder', 'Unbekannter', 'Kunde', 'Geheimstadt'),
+    ('Keine', None, 'Stadt', None)
 ]
 
 DEMO_ORDERS = [
@@ -53,14 +54,14 @@ def reset_demo():
             with conn.cursor() as cur:
                 
                 # Delete current data and reset IDs
-                cur.execute("TRUNCATE TABLE orders, customers RESTART IDENTITY CASCADE")
+                cur.execute("TRUNCATE TABLE orders, customers RESTART IDENTITY CASCADE;")
                 
                 # Add demo customers
                 for first_name, middle_name, last_name, city in DEMO_CUSTOMERS:
                     cur.execute(
                         """
                         INSERT INTO customers (first_name, middle_name, last_name, city)
-                        VALUES (%s, %s, %s, %s)
+                        VALUES (%s, %s, %s, %s);
                         """,
                         (first_name, middle_name, last_name, city)
                     )
@@ -70,7 +71,7 @@ def reset_demo():
                     cur.execute(
                         """
                         INSERT INTO orders (customer_id, amount, status, order_date)
-                        VALUES (%s, %s, %s, %s)
+                        VALUES (%s, %s, %s, %s);
                         """,
                         (customer_id, amount, status, order_date)
                     )
@@ -110,7 +111,7 @@ def add_order(customer_id: int, amount: float) -> int:
                 cur.execute(
                     """
                     INSERT INTO orders (customer_id, amount, status)
-                    VALUES (%s, %s, DEFAULT) RETURNING id 
+                    VALUES (%s, %s, DEFAULT) RETURNING id;
                     """, 
                     (customer_id, amount) # status defaults to 'pending'
                 )
@@ -123,15 +124,15 @@ def add_order(customer_id: int, amount: float) -> int:
 
 
 
-def revenue_report() -> list[dict]:
+def customer_revenue_report() -> list[dict]:
     """
-    This method calculates the sales for each individual customer and sorts them in descending order
+    This method calculates the sales for each individual customer and sorts them in descending order.
     
     Returns:
         list[dict]: List of customer reports as Dict objects:
-            - name (str): customer name
-            - city (str): city of the customer  
-            - orders (int): amount of orders by the customer
+            - name (str): Customer name
+            - city (str): City of the customer  
+            - orders (int): Amount of orders by the customer
             - revenue (float): Total sales in euros
     
     Raises:
@@ -145,12 +146,12 @@ def revenue_report() -> list[dict]:
                     """
                     SELECT 
                         c.first_name || ' ' || COALESCE(c.middle_name || ' ', '') || c.last_name AS name,
-                        c.city,
+                        COALESCE(c.city, 'Unbekannt') AS city,
                         COUNT(o.id) AS orders,
                         COALESCE(SUM(o.amount), 0) AS revenue
                     FROM customers c LEFT JOIN orders o ON c.id = o.customer_id 
-                    GROUP BY c.id, c.last_name, c.first_name, c.middle_name, c.city
-                    ORDER BY revenue DESC
+                    GROUP BY c.id, c.last_name, c.first_name, c.middle_name, COALESCE(c.city, 'Unbekannt')
+                    ORDER BY revenue DESC;
                     """
                 )
                 return cur.fetchall()
@@ -158,6 +159,58 @@ def revenue_report() -> list[dict]:
     except Exception as e:
         print(f"Failed to create the report revenue: {e}")
         raise
+
+
+
+def city_revenue_report() -> list[dict]:
+    """
+    This method calculates total orders and revenue per city, including all cities, counting only 
+    orders not marked as 'pending' or 'cancelled'. Results are sorted by revenue descending.
+
+    Returns:
+        list[dict]: List of city reports as Dict objects:
+            - city (str): Name of the city ('Unbekannt' if city is NULL)
+            - city_orders (int): Number of completed orders in the city
+            - city_revenue (float): Total revenue from completed orders in euros
+    
+    Raises:
+        psycopg2.Error: if database operation fails
+    """
+
+    try:
+        with conn: # Auto commit/rollback ensures transaction safety
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT
+                        COALESCE(c.city, 'Unbekannt') AS city,
+                        COUNT(
+                            CASE 
+                                WHEN o.status NOT IN ('pending', 'cancelled') 
+                                THEN o.id
+                                -- if CASE doesn't match -> returns NULL -> COUNT ignores
+                            END
+                        ) AS city_orders,
+                        COALESCE(
+                            SUM(
+                                CASE 
+                                    WHEN o.status NOT IN ('pending', 'cancelled') 
+                                    THEN o.amount
+                                    -- if CASE doesn't match -> returns NULL -> SUM ignores 
+                                END
+                            ), 0) 
+                        AS city_revenue
+                    FROM customers c LEFT JOIN orders o ON c.id = o.customer_id
+                    GROUP BY COALESCE(c.city, 'Unbekannt')
+                    ORDER BY city_revenue DESC;
+                    """
+                )
+                return cur.fetchall()
+
+    except Exception as e:
+        print(f"Failed to create the city revenue: {e}")
+        raise
+
 
 
 #  Demo execution:
@@ -172,11 +225,17 @@ if __name__ == "__main__":
     full_name = " ".join([x for x in (first_name, middle_name, last_name) if x]) # remove possible "None" for "middle_name"
     print(f"NEW ORDER: ID {new_id} for {full_name}")
 
-    # 2. Evaluation: SALES REPORT
-    print("\nSALES REPORT:")
-    report = revenue_report()
-    for row in report:
-        print(f"   {row['name']} ({row['city']}): {row['orders']} order(s), €{row['revenue']:.2f}")
+    # 2. Evaluation: CUSTOMER SALES REPORT
+    print("\nCUSTOMER SALES REPORT:")
+    customer_report = customer_revenue_report()
+    for row in customer_report:
+        print(f"   {row['name']} ({row['city']}): {row['orders']} order(s), {row['revenue']}€")
+
+    # 3. Evaluation: CITY SALES REPORT
+    print("\nCITY SALES REPORT:")
+    city_revenue = city_revenue_report()
+    for row in city_revenue:
+        print(f"   {row['city']}: {row['city_orders']} order(s), {row['city_revenue']}€")
 
     conn.close()
     
