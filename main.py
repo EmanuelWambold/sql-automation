@@ -1,5 +1,6 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from typing import Any
 from random import uniform as randomFloat
 
 
@@ -16,7 +17,8 @@ DEMO_ORDERS = [
     (1, 299.99, 'cancelled', '2026-01-26'),
     (1, 450.00, 'arrived', '2026-01-25'),
     (2, 0.50, 'shipped', '2025-12-31'),
-    (3, 1250.75, 'pending', '2028-01-20') 
+    (3, 1250.75, 'pending', '2028-01-20'),
+    (4, 75.75, 'arrived', '2026-01-30')
 ]
 
 NEW_ORDER_CUSTOMER_ID = 1
@@ -38,7 +40,7 @@ conn = psycopg2.connect(
     port=5432
 )
 
-def reset_demo():
+def reset_demo() -> None:
     """
     This method resets the database to its designed structure and inserts the demo data.
     
@@ -89,17 +91,21 @@ def add_order(customer_id: int, amount: float) -> int:
     This method automatically adds new orders.
         
     Args:
-        customer_id (int): customer ID for the new added order
-        amount (float): amount for the new added order
+        - customer_id (int): customer ID for the new added order
+        - amount (float): amount for the new added order
         
     Returns:
         the order ID (int) for the new added order
     
     Raises:
-        ValueError: if the amount is not positive
-        psycopg2.Error: if database operation fails
+        - TypeError: if a parameter does not match the expected type
+        - ValueError: if the amount is not positive
+        - psycopg2.Error: if database operation fails
     """
     
+    # Validate parameters
+    validate_param_type("customer_id", customer_id, int)
+    validate_param_type("amount", amount, (float, int))
     if amount < 0:
         raise ValueError(f"Amount of order must be positive, got {amount} instead")
     
@@ -120,6 +126,68 @@ def add_order(customer_id: int, amount: float) -> int:
     
     except Exception as e:
         print(f"Failed to add new order for customer {customer_id} with amount {amount}: {e}")
+        raise
+
+
+
+def insert_new_customer_with_first_order(
+    first_name: str,
+    last_name: str,
+    amount: float,
+    *,
+    middle_name: str | None = None,
+    city: str | None = None,
+) -> tuple[int, int]:
+    
+    """
+    This method creates a new customer and a first order in single transaction.
+    
+    Args:
+        - first_name: Customer first name
+        - last_name: Customer last name
+        - amount: First order amount
+        - middle_name: Optional middle name
+        - city: Optional city
+  
+    Returns:
+        tuple[int, int]: (customer_id, order_id) of newly created entities
+  
+    Raises:
+        - ValueError: if the amount is not positive
+        - psycopg2.Error: if database operation fails
+    """
+
+    # Validate parameters
+    validate_param_type("first_name", first_name, str)
+    validate_param_type("last_name", last_name, str)
+    validate_param_type("amount", amount, (int, float))
+    if amount < 0:
+        raise ValueError(f"Amount of order must be positive, got {amount} instead")
+    validate_param_type("middle_name", middle_name, str, can_be_null=True)
+    validate_param_type("city", city, str, can_be_null=True)
+    
+    try:
+        with conn: # Auto commit/rollback ensures transaction safety
+            with conn.cursor() as cur:
+                
+                # 1. Insert new customer and get its ID
+                cur.execute(
+                    """
+                    INSERT INTO customers (first_name, middle_name, last_name, city)
+                    VALUES (%s, %s, %s, %s)
+                    RETURNING id
+                    """, 
+                    (first_name, middle_name, last_name, city)
+                )
+                customer_id = cur.fetchone()[0]
+                
+        # 2. Insert first order with SAME customer_id
+        order_id = add_order(customer_id, amount)
+                
+        return customer_id, order_id
+        
+    except Exception as e:
+        print(f"Failed to create customer and order transaction: {e}")
         raise
 
 
@@ -249,6 +317,31 @@ def status_report() -> list[dict]:
 
 
 
+def validate_param_type(name: str, value: Any, expected_type: type, can_be_null: bool = False) -> None:
+    """
+    This method is used to validate a single parameter type and optional nullability.
+    
+    Args:
+        - name (str): Parameter name for error reporting
+        - value (Any): Value to validate
+        - expected_type (type): Expected type (int, float, str, tuple of types)
+        - can_be_null (bool): Allow None values (default: False)
+        
+    Raises:
+        TypeError: If type doesn't match expected_type or nullability rules
+    """
+    
+    if can_be_null and value is None:
+        return  # None is explicitly allowed
+    
+    if not isinstance(value, expected_type):
+        type_name = expected_type.__name__ if not isinstance(expected_type, tuple) else ', '.join(types.__name__ for types in expected_type)
+        actual_type = type(value).__name__
+        raise TypeError(f"{name} must be {type_name}{' or None' if can_be_null else ''}, got {actual_type} instead")
+
+
+
+
 #  Demo execution:
 if __name__ == "__main__":
     
@@ -261,19 +354,23 @@ if __name__ == "__main__":
     full_name = " ".join([x for x in (first_name, middle_name, last_name) if x]) # remove possible "None" for "middle_name"
     print(f"NEW ORDER: ID {new_id} for {full_name}")
 
-    # 2. Evaluation: CUSTOMER SALES REPORT
+    # 2. Automation: NEW CUSTOMER WITH ORDER
+    new_customer_id, new_order_id = insert_new_customer_with_first_order("Neuer", "Kunde", 99.99)
+    print(f"NEW ORDER: ID {new_order_id} for the newly created customer with ID {new_customer_id}")
+
+    # 3. Evaluation: CUSTOMER SALES REPORT
     print("\nCUSTOMER SALES REPORT:")
     customer_report = customer_revenue_report()
     for row in customer_report:
         print(f"   {row['name']} ({row['city']}): {row['orders']} order(s), {row['revenue']}€")
 
-    # 3. Evaluation: CITY SALES REPORT
-    print("\nCITY SALES REPORT:")
+    # 4. Evaluation: CITY SALES REPORT
+    print("\nCITY SALES REPORT - only 'shipped' and 'arrived' orders included:")
     city_revenue = city_revenue_report()
     for row in city_revenue:
         print(f"   {row['city']}: {row['city_orders']} order(s), {row['city_revenue']}€")
 
-    # 4. Evaluation: STATUS SALES REPORT
+    # 5. Evaluation: STATUS SALES REPORT
     print("\nSTATUS SALES REPORT:")
     status_data = status_report()
     for row in status_data:
