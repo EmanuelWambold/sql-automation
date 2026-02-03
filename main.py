@@ -2,6 +2,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from typing import Any
 from random import uniform as randomFloat
+from datetime import datetime
 
 
 
@@ -22,6 +23,8 @@ DEMO_ORDERS = [
 ]
 
 NEW_ORDER_CUSTOMER_ID = 1
+START_DATE_REVENUE = "2025-12-01"
+END_DATE_REVENUE = "2026-01-25"
 
 
 
@@ -194,7 +197,8 @@ def insert_new_customer_with_first_order(
 
 def customer_revenue_report() -> list[dict]:
     """
-    This method calculates the sales for each individual customer and sorts them in descending order.
+    This method calculates the sales for each individual customer and sorts them in descending order,
+    using the SQL-view 'customer_revenue_view'.
     
     Returns:
         list[dict]: List of customer reports as Dict objects:
@@ -212,13 +216,8 @@ def customer_revenue_report() -> list[dict]:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(
                     """
-                    SELECT 
-                        c.first_name || ' ' || COALESCE(c.middle_name || ' ', '') || c.last_name AS name,
-                        COALESCE(c.city, 'Unbekannt') AS city,
-                        COUNT(o.id) AS orders,
-                        COALESCE(SUM(o.amount), 0) AS revenue
-                    FROM customers c LEFT JOIN orders o ON c.id = o.customer_id 
-                    GROUP BY c.id, c.last_name, c.first_name, c.middle_name, COALESCE(c.city, 'Unbekannt')
+                    SELECT name, city, orders, revenue
+                    FROM customer_revenue_view
                     ORDER BY revenue DESC;
                     """
                 )
@@ -230,7 +229,7 @@ def customer_revenue_report() -> list[dict]:
 
 
 
-def city_revenue_report() -> list[dict]:
+def city_revenue_report_filtered() -> list[dict]:
     """
     This method calculates total orders and revenue per city, including all cities, counting only 
     orders not marked as 'pending' or 'cancelled'. Results are sorted by revenue descending.
@@ -317,6 +316,58 @@ def status_report() -> list[dict]:
 
 
 
+def revenue_between_report(start_date: str, end_date: str) -> float:
+    """
+    This method calculates the total revenue for orders between two dates (inclusively).
+    Expects dates in 'YYYY-MM-DD' format!
+    
+    Args:
+        start_date (str): Start date in 'YYYY-MM-DD' format  
+        end_date (str): End date in 'YYYY-MM-DD' format
+        
+    Returns:
+        float: Total revenue within the date range
+        
+    Raises:
+        ValueError: If date format is invalid or start_date > end_date
+        psycopg2.Error: if database operation fails
+    """
+    
+    # Validate parameters
+    validate_param_type("start_date", start_date, str)
+    validate_param_type("end_date", end_date, str)
+    
+    # Validate date format 'YYYY-MM-DD'
+    try:
+        start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+        end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+    except ValueError:
+        raise ValueError(f"Date format must be 'YYYY-MM-DD', got '{start_date}' or '{end_date}'")
+    
+    # Validate start_date <= end_date
+    if start_dt > end_dt:
+        raise ValueError(f"start_date ({start_date}) can't be after end_date ({end_date})")
+    
+    try:
+        with conn: # Auto commit/rollback ensures transaction safety
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT COALESCE(SUM(amount), 0) AS dates_revenue
+                    FROM orders 
+                    WHERE order_date BETWEEN %s AND %s;
+                    """,
+                    (start_date, end_date)
+                )
+
+                return cur.fetchone()[0]
+                
+    except Exception as e:
+        print(f"Failed to calculate revenue between {start_date} and {end_date}: {e}")
+        raise
+
+
+
 def validate_param_type(name: str, value: Any, expected_type: type, can_be_null: bool = False) -> None:
     """
     This method is used to validate a single parameter type and optional nullability.
@@ -366,7 +417,7 @@ if __name__ == "__main__":
 
     # 4. Evaluation: CITY SALES REPORT
     print("\nCITY SALES REPORT - only 'shipped' and 'arrived' orders included:")
-    city_revenue = city_revenue_report()
+    city_revenue = city_revenue_report_filtered()
     for row in city_revenue:
         print(f"   {row['city']}: {row['city_orders']} order(s), {row['city_revenue']}€")
 
@@ -374,7 +425,12 @@ if __name__ == "__main__":
     print("\nSTATUS SALES REPORT:")
     status_data = status_report()
     for row in status_data:
-        print(f"  {row['status']}: {row['status_orders']} order(s), {row['status_revenue']}€")
+        print(f"   {row['status']}: {row['status_orders']} order(s), {row['status_revenue']}€")
+    
+    # 6. Evaluation: REVENUE BETWEEN DATES
+    print(f"\nREVENUE BETWEEN {START_DATE_REVENUE} AND {END_DATE_REVENUE}:")
+    dates_revenue = revenue_between_report(START_DATE_REVENUE, END_DATE_REVENUE)
+    print(f"   Total revenue: {dates_revenue}€")
 
     conn.close()
     

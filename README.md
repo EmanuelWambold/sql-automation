@@ -53,7 +53,7 @@ NEW ORDER: ID 7 for the newly created customer with ID 5
 
 CUSTOMER SALES REPORT:
    Fremder Unbekannter Kunde (Geheimstadt): 1 order(s), 1250.75€
-   Max Mustermann (Karlsruhe): 3 order(s), 832.57€
+   Max Mustermann (Karlsruhe): 3 order(s), 795.96€
    Neuer Kunde (Unbekannt): 1 order(s), 99.99€
    Keine Stadt (Unbekannt): 1 order(s), 75.75€
    Emanuel Wambold (Woerth am Rhein): 1 order(s), 0.50€
@@ -65,10 +65,13 @@ CITY SALES REPORT - only 'shipped' and 'arrived' orders included:
    Geheimstadt: 0 order(s), 0€
 
 STATUS SALES REPORT:
-  pending: 3 order(s), 1433.32€
-  arrived: 2 order(s), 525.75€
-  cancelled: 1 order(s), 299.99€
-  shipped: 1 order(s), 0.50€
+   pending: 3 order(s), 1396.71€
+   arrived: 2 order(s), 525.75€
+   cancelled: 1 order(s), 299.99€
+   shipped: 1 order(s), 0.50€
+
+REVENUE BETWEEN 2025-12-01 AND 2026-01-25:
+   Total revenue: 450.50€
 
 
 --------------------------------------------------
@@ -79,15 +82,36 @@ Demo completed
 
 ---
 
-### Gelernte PostgreSQL Features
-- ENUM-Typen (`order_status`)
-- `TRUNCATE RESTART IDENTITY`
-- `COALESCE` für NULL-Behandlung
+## Verwendete Python / psycopg2 Features
 
-### Gelernte Python Features
-- Transaktionssteuerung mit `psycopg2`
-- Type Hints
-- `with conn:` für automatisches Commit und Rollback
+- Direkte PostgreSQL-Anbindung mit `psycopg2`
+- `RealDictCursor` für dictionary-ähnliche Row-Zugriffe
+- Transaktionssteuerung mit `with conn:` (automatisches Commit/Rollback)
+- Parametrisierte Abfragen (`%s`-Platzhalter) für SQL-Injection-Schutz
+- `INSERT ... RETURNING id` für verknüpfte Records in einer Transaktion
+- Parameter-Validierung mit `validate_param_type()` (Type Hints + NULL-Support)
+- Datumsformat-Validierung mit `datetime.strptime('%Y-%m-%d')`
+- Strukturierte Fehlerbehandlung mit `try/except` zu allen DB-Operationen
+- Getrennte Verantwortlichkeiten:
+  - `reset_demo()` für Schema-Reset + Demo-Daten
+  - `add_order()` und `insert_new_customer_with_first_order()` für Business-Logik
+  - Mehrere Report-Funktionen (pro Kunde, Stadt, Status, Datumsbereich)
+
+
+## Verwendete SQL / PostgreSQL Features
+
+- PostgreSQL als primäre Datenbank
+- Eigener ENUM-Typ `order_status` für Bestellstatus
+- SERIAL PRIMARY KEY für Auto-Increment IDs
+- CHECK-Constraint `amount >= 0` zur Datensicherheit
+- Foreign Key `orders.customer_id` mit `ON DELETE CASCADE`
+- Index auf `orders.order_date` für Datumsbereich-Abfragen
+- Automatische Timestamps mit `DEFAULT CURRENT_TIMESTAMP`
+- Automatische Datumswerte mit `DEFAULT CURRENT_DATE`
+- Aggregationen mit `SUM`/`COUNT` über verknüpfte Tabellen
+- NULL-Behandlung mit `COALESCE`, z.B. `COALESCE(city, 'Unbekannt')`
+- Bedingte Aggregationen mit `CASE WHEN`
+- SQL-View `customer_revenue_view` für gekapselte Kundenumsatz-Berichte
 
 ---
 

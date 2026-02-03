@@ -28,3 +28,16 @@ CREATE TABLE orders (
 
 -- Create index on 'order_date' for the 'orders' table:
 CREATE INDEX idx_orders_order_date ON orders (order_date);
+
+
+-- Create view that summarizes each customer order count and total revenue
+-- while handling missing names and cities:
+CREATE VIEW customer_revenue_view AS
+SELECT 
+    c.id,
+    c.first_name || ' ' || COALESCE(c.middle_name || ' ', '') || c.last_name AS name,
+    COALESCE(c.city, 'Unbekannt') AS city,
+    COUNT(o.id) AS orders,
+    COALESCE(SUM(o.amount), 0) AS revenue
+FROM customers c LEFT JOIN orders o ON c.id = o.customer_id
+GROUP BY c.id, c.last_name, c.first_name, c.middle_name, COALESCE(c.city, 'Unbekannt');
