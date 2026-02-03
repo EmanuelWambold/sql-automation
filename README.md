@@ -20,27 +20,36 @@ Dieses Demo-Projekt wurde für meine Werkstudenten-Bewerbung erstellt, um prakti
 sql-automation/
 ├── README.md
 ├── main.py         # Hauptprogramm + Demo-Daten + Reports
-└── schema.sql      # Datenbankschema (Tabellen, ENUMs, Indizes)
+└── schema.sql      # Datenbankschema (Tabellen, ENUMs, Index, View)
 ```
 
 ## Setup (~2 Minuten)
 
-### 1) PostgreSQL
-```sql
-CREATE DATABASE atruvia_demo;
-CREATE USER atruvia_user WITH PASSWORD 'atruvia2026';
-GRANT ALL PRIVILEGES ON DATABASE atruvia_demo TO atruvia_user;
-```
-Das Schema wird ausgeführt, indem `schema.sql` in pgAdmin gestartet wird.
-
-### 2) Python
+### 1) Umgebungsvariablen (Sicherheit)
+Dieses Projekt nutzt Umgebungsvariablen für die Datenbank-Konfiguration.
+1. Installiere die benötigten Abhängigkeiten:
 ```bash
-pip install psycopg2-binary
+pip install psycopg2-binary python-dotenv
+```
+2. Kopiere die Beispieldatei: `.env.example` zu `.env`
+3. Passe die Werte in der .env Datei an dein lokales PostgreSQL-Setup an.
+
+### 2) PostgreSQL
+Erstelle die Datenbank und den User (Beispielwerte aus `.env.example`):
+```sql
+CREATE DATABASE your_database_name_here;
+CREATE USER your_db_user_here WITH PASSWORD 'your_db_password_here';
+GRANT ALL PRIVILEGES ON DATABASE your_database_name_here TO your_db_user_here;
+```
+Das Schema wird ausgeführt, indem `schema.sql` in pgAdmin oder per psql gestartet wird.
+
+### 3) Programm starten
+```bash
 python main.py
 ```
 Die Demo-Daten werden beim ersten Start automatisch eingefügt.
 
-### 3) Erwartete Ausgabe
+### 4) Erwartete Ausgabe
 ```text
 --------------------------------------------------
 ATRUVIA DEMO - PostgreSQL + Python automation

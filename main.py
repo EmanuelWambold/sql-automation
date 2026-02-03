@@ -1,3 +1,5 @@
+import os
+from dotenv import load_dotenv
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from typing import Any
@@ -28,21 +30,48 @@ END_DATE_REVENUE = "2026-01-25"
 
 
 
+def require_env(name: str, default: str | None = None) -> str:
+    """
+    This method safely gets the required environment variable or raises a clear error.
+    
+    Args:
+        name (str): Environment variable name
+        default (Optional str): Optional default value (if None, raises error)
+    
+    Returns:
+        str: Environment variable value
+    
+    Raises:
+        RuntimeError: If variable missing and no default provided
+    """
+
+    value = os.getenv(name, default)
+    if value is None:
+        raise RuntimeError(f"Missing required environment variable: {name}")
+    return value
+
+
+# Open .env
+load_dotenv()
+
+# Connection to database as 'atruvia_user' (superuser)
+conn = psycopg2.connect(
+    dbname=require_env("DB_NAME"),
+    user=require_env("DB_USER"),
+    password=require_env("DB_PASSWORD"),
+    host=require_env("DB_HOST", "localhost"),
+    port=int(require_env("DB_PORT", "5432"))
+)
+
+
 print("""
 --------------------------------------------------
 ATRUVIA DEMO - PostgreSQL + Python automation
 --------------------------------------------------
 \n""")
 
-# Connection to database as 'atruvia_user' (superuser)
-conn = psycopg2.connect(
-    dbname="atruvia_demo",
-    user="atruvia_user",
-    password="atruvia2026",
-    host="localhost",
-    port=5432
-)
 
+# --------main program--------
 def reset_demo() -> None:
     """
     This method resets the database to its designed structure and inserts the demo data.
