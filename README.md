@@ -1,16 +1,17 @@
 # sql-automation
 
-# Atruvia Demo – PostgreSQL + Python Automatisierung
+## Atruvia Demo – PostgreSQL + Python Automatisierung
 
 ---
 
 ## Zweck des Projekts
-Dieses Demo-Projekt wurde im Rahmen meiner Bewerbung auf eine Werkstudentenstelle erstellt, um praktische Kenntnisse in **PostgreSQL** sowie **Python-basierter Datenbank-Automatisierung** zu demonstrieren.
+Dieses Demo-Projekt wurde für meine Werkstudenten-Bewerbung erstellt, um praktische Kenntnisse in **PostgreSQL** und **Python-Datenbankautomatisierung** zu demonstrieren.
 
-**Funktionen:**
-- Kunden/Bestellungen Datenbank mit ENUMs, Foreign Keys, Constraints
-- Automatisches Hinzufügen neuer Bestellungen  
-- Umsatz-Report pro Kunde (sortiert nach Gesamtumsatz)
+**Features:**
+- Vollständige Kunden-/Bestellungs-Datenbank mit ENUMs, Foreign Keys, Constraints und Views
+- Automatisches Hinzufügen von Bestellungen an bestehende Kunden
+- Transaktionssichere Erstellung neuer Kunden mit erster Bestellung
+- Mehrere Reports: Umsatz pro Kunde (über View), pro Stadt (Status gefiltert), pro Status, Datumsbereich
 
 ---
 
@@ -116,4 +117,4 @@ Demo completed
 ---
 
 ## Status:
-Aktiv weiterentwickelt nach Bewerbungseinsendung
+**Aktiv weiterentwickelt** nach Bewerbungseinsendung
