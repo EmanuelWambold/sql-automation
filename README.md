@@ -140,5 +140,17 @@ Demo completed
 
 ---
 
+## Weiterentwicklungen (Roadmap)
+
+**Upgrades geplant:**
+```bash
+[ ] Logging statt prints (logging.config + structured logs)
+[ ] Unit-Tests (pytest für repository.py + mock connections)  
+[ ] Security: data_user PRIVILEGES anpassen (gezielter statt SUPERUSER)
+[ ] Performance: insert_new_customer_with_order() -> in einer Transaktion
+```
+
+---
+
 ## Status:
 **Aktiv weiterentwickelt** nach Bewerbungseinsendung
