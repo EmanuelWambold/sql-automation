@@ -18,11 +18,19 @@ Dieses Demo-Projekt wurde für meine Werkstudenten-Bewerbung erstellt, um prakti
 ## Projektstruktur
 ```text
 sql-automation/
-├── .env.example    # Vorlage für Umgebungsvariablen (DB-Zugangsdaten)
-├── .gitignore      # Verhindert, dass sensible Daten (.env) hochgeladen werden
-├── README.md       # Dokumentation und Setup-Anleitung
-├── main.py         # Hauptprogramm + Demo-Daten + Reports
-└── schema.sql      # Datenbankdefinition (Tabellen, ENUMs, Indizes, View)
+├── data/
+│   └── schema.sql          # Datenbankschema (Tabellen, ENUMs, Views, Index)
+│
+├── src/
+│   ├── __init__.py         # Python-Package für saubere Imports
+│   ├── connection.py       # get_connection() + Environment-Management
+│   ├── repository.py       # Repository-Pattern: Alle CRUD + Reports
+│   └── validation.py       # validate_param_type()
+│
+├── .env.example           # Konfiguration-Vorlage (DB-Zugangsdaten)
+├── .gitignore             # Schützt .env (Passwort)
+├── README.md
+└── main.py                # Demo-Runner
 ```
 
 ## Setup (~2 Minuten)
@@ -47,6 +55,7 @@ Das Schema wird ausgeführt, indem `schema.sql` in pgAdmin oder per psql gestart
 
 ### 3) Programm starten
 ```bash
+cd sql-automation
 python main.py
 ```
 Die Demo-Daten werden beim ersten Start automatisch eingefügt.
@@ -108,6 +117,8 @@ Demo completed
   - `reset_demo()` für Schema-Reset + Demo-Daten
   - `add_order()` und `insert_new_customer_with_first_order()` für Business-Logik
   - Mehrere Report-Funktionen (pro Kunde, Stadt, Status, Datumsbereich)
+- Repository-Pattern in `src/repository.py` mit `cursor.executemany()` für Bulk-Inserts
+- Modulare Architektur: `src/connection.py`, `src/validation.py`, `main.py`
 
 
 ## Verwendete SQL / PostgreSQL Features
@@ -124,6 +135,8 @@ Demo completed
 - NULL-Behandlung mit `COALESCE`, z.B. `COALESCE(city, 'Unbekannt')`
 - Bedingte Aggregationen mit `CASE WHEN`
 - SQL-View `customer_revenue_view` für gekapselte Kundenumsatz-Berichte
+- `TRUNCATE ... RESTART IDENTITY CASCADE` für Demo-Reset
+- `cursor.executemany()` für performante Bulk-Insert-Operationen
 
 ---
 
