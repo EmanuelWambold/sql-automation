@@ -6,7 +6,8 @@ from typing import Any
 from random import uniform as randomFloat
 from datetime import datetime
 
-
+# Open .env
+load_dotenv()
 
 # Constants:
 DEMO_CUSTOMERS = [
@@ -30,6 +31,7 @@ END_DATE_REVENUE = "2026-01-25"
 
 
 
+# --- DB Connection helper ---
 def require_env(name: str, default: str | None = None) -> str:
     """
     This method safely gets the required environment variable or raises a clear error.
@@ -42,7 +44,7 @@ def require_env(name: str, default: str | None = None) -> str:
         str: Environment variable value
     
     Raises:
-        RuntimeError: If variable missing and no default provided
+        RuntimeError: if variable missing and no default provided
     """
 
     value = os.getenv(name, default)
@@ -51,31 +53,37 @@ def require_env(name: str, default: str | None = None) -> str:
     return value
 
 
-# Open .env
-load_dotenv()
+def get_connection() -> "psycopg2.connection":
+    """
+    This method creates the database connection using the environment variables.
+    
+    Returns:
+        psycopg2.connection: Active database connection
+        
+    Raises:
+        RuntimeError: if required environment variables (DB_NAME, DB_USER, DB_PASSWORD) are missing
+        ValueError: if DB_PORT is invalid
+        psycopg2.OperationalError: if database connection fails
+    """
 
-# Connection to database as 'atruvia_user' (superuser)
-conn = psycopg2.connect(
-    dbname=require_env("DB_NAME"),
-    user=require_env("DB_USER"),
-    password=require_env("DB_PASSWORD"),
-    host=require_env("DB_HOST", "localhost"),
-    port=int(require_env("DB_PORT", "5432"))
-)
+    return psycopg2.connect(
+        dbname=require_env("DB_NAME"),
+        user=require_env("DB_USER"),
+        password=require_env("DB_PASSWORD"),
+        host=os.getenv("DB_HOST", "localhost"),
+        port=int(os.getenv("DB_PORT", 5432))
+    )
 
 
-print("""
---------------------------------------------------
-ATRUVIA DEMO - PostgreSQL + Python automation
---------------------------------------------------
-\n""")
 
-
-# --------main program--------
-def reset_demo() -> None:
+# --- Main Funtions ---
+def reset_demo(conn: "psycopg2.connection") -> None:
     """
     This method resets the database to its designed structure and inserts the demo data.
     
+    Args:
+        conn (psycopg2.connection): active database connection
+
     Returns:
         None
     
@@ -118,11 +126,12 @@ def reset_demo() -> None:
 
 
 
-def add_order(customer_id: int, amount: float) -> int:
+def add_order(conn: "psycopg2.connection", customer_id: int, amount: float) -> int:
     """
     This method automatically adds new orders.
         
     Args:
+        - conn (psycopg2.connection): active database connection
         - customer_id (int): customer ID for the new added order
         - amount (float): amount for the new added order
         
@@ -163,6 +172,7 @@ def add_order(customer_id: int, amount: float) -> int:
 
 
 def insert_new_customer_with_first_order(
+    conn: "psycopg2.connection",
     first_name: str,
     last_name: str,
     amount: float,
@@ -175,6 +185,7 @@ def insert_new_customer_with_first_order(
     This method creates a new customer and a first order in single transaction.
     
     Args:
+        - conn (psycopg2.connection): active database connection
         - first_name: Customer first name
         - last_name: Customer last name
         - amount: First order amount
@@ -214,7 +225,7 @@ def insert_new_customer_with_first_order(
                 customer_id = cur.fetchone()[0]
                 
         # 2. Insert first order with SAME customer_id
-        order_id = add_order(customer_id, amount)
+        order_id = add_order(conn, customer_id, amount)
                 
         return customer_id, order_id
         
@@ -224,11 +235,14 @@ def insert_new_customer_with_first_order(
 
 
 
-def customer_revenue_report() -> list[dict]:
+def customer_revenue_report(conn: "psycopg2.connection") -> list[dict]:
     """
     This method calculates the sales for each individual customer and sorts them in descending order,
     using the SQL-view 'customer_revenue_view'.
     
+    Args:
+        - conn (psycopg2.connection): active database connection
+
     Returns:
         list[dict]: List of customer reports as Dict objects:
             - name (str): Customer name
@@ -258,10 +272,13 @@ def customer_revenue_report() -> list[dict]:
 
 
 
-def city_revenue_report_filtered() -> list[dict]:
+def city_revenue_report_filtered(conn: "psycopg2.connection") -> list[dict]:
     """
     This method calculates total orders and revenue per city, including all cities, counting only 
     orders not marked as 'pending' or 'cancelled'. Results are sorted by revenue descending.
+
+    Args:
+        - conn (psycopg2.connection): active database connection
 
     Returns:
         list[dict]: List of city reports as Dict objects:
@@ -309,10 +326,13 @@ def city_revenue_report_filtered() -> list[dict]:
 
 
 
-def status_report() -> list[dict]:
+def status_report(conn: "psycopg2.connection") -> list[dict]:
     """
     This method calculates orders and revenue per order status.
     
+    Args:
+        - conn (psycopg2.connection): active database connection
+
     Returns:
         list[dict]: List of status reports as Dict objects:
             - status (str): Order name for each status
@@ -345,14 +365,15 @@ def status_report() -> list[dict]:
 
 
 
-def revenue_between_report(start_date: str, end_date: str) -> float:
+def revenue_between_report(conn: "psycopg2.connection", start_date: str, end_date: str) -> float:
     """
     This method calculates the total revenue for orders between two dates (inclusively).
     Expects dates in 'YYYY-MM-DD' format!
     
     Args:
-        start_date (str): Start date in 'YYYY-MM-DD' format  
-        end_date (str): End date in 'YYYY-MM-DD' format
+        - conn (psycopg2.connection): active database connection
+        - start_date (str): Start date in 'YYYY-MM-DD' format  
+        - end_date (str): End date in 'YYYY-MM-DD' format
         
     Returns:
         float: Total revenue within the date range
@@ -397,6 +418,7 @@ def revenue_between_report(start_date: str, end_date: str) -> float:
 
 
 
+# --- Validater Funtion ---
 def validate_param_type(name: str, value: Any, expected_type: type, can_be_null: bool = False) -> None:
     """
     This method is used to validate a single parameter type and optional nullability.
@@ -408,7 +430,7 @@ def validate_param_type(name: str, value: Any, expected_type: type, can_be_null:
         - can_be_null (bool): Allow None values (default: False)
         
     Raises:
-        TypeError: If type doesn't match expected_type or nullability rules
+        TypeError: if type doesn't match expected_type or nullability rules
     """
     
     if can_be_null and value is None:
@@ -421,45 +443,54 @@ def validate_param_type(name: str, value: Any, expected_type: type, can_be_null:
 
 
 
-
-#  Demo execution:
+# --- Demo execution: ---
 if __name__ == "__main__":
-    
+
+    # Connection to database as 'atruvia_user' (superuser)
+    conn = get_connection()
+
+    print("""
+    --------------------------------------------------
+    ATRUVIA DEMO - PostgreSQL + Python automation
+    --------------------------------------------------
+    \n""")
+
     # 0. Reset the demo
-    reset_demo() 
+    reset_demo(conn) 
 
     # 1. Automation: NEW ORDER
-    new_id = add_order(customer_id=NEW_ORDER_CUSTOMER_ID, amount=round(randomFloat(1, 100), 2))
+    new_id = add_order(conn, customer_id=NEW_ORDER_CUSTOMER_ID, amount=round(randomFloat(1, 100), 2))
     first_name, middle_name, last_name, city = DEMO_CUSTOMERS[NEW_ORDER_CUSTOMER_ID - 1]
     full_name = " ".join([x for x in (first_name, middle_name, last_name) if x]) # remove possible "None" for "middle_name"
     print(f"NEW ORDER: ID {new_id} for {full_name}")
 
     # 2. Automation: NEW CUSTOMER WITH ORDER
-    new_customer_id, new_order_id = insert_new_customer_with_first_order("Neuer", "Kunde", 99.99)
+    new_customer_id, new_order_id = insert_new_customer_with_first_order(conn, "Neuer", "Kunde", 99.99)
     print(f"NEW ORDER: ID {new_order_id} for the newly created customer with ID {new_customer_id}")
 
     # 3. Evaluation: CUSTOMER SALES REPORT
     print("\nCUSTOMER SALES REPORT:")
-    customer_report = customer_revenue_report()
+    customer_report = customer_revenue_report(conn)
     for row in customer_report:
         print(f"   {row['name']} ({row['city']}): {row['orders']} order(s), {row['revenue']}€")
 
     # 4. Evaluation: CITY SALES REPORT
     print("\nCITY SALES REPORT - only 'shipped' and 'arrived' orders included:")
-    city_revenue = city_revenue_report_filtered()
+    city_revenue = city_revenue_report_filtered(conn)
     for row in city_revenue:
         print(f"   {row['city']}: {row['city_orders']} order(s), {row['city_revenue']}€")
 
     # 5. Evaluation: STATUS SALES REPORT
     print("\nSTATUS SALES REPORT:")
-    status_data = status_report()
+    status_data = status_report(conn)
     for row in status_data:
         print(f"   {row['status']}: {row['status_orders']} order(s), {row['status_revenue']}€")
     
     # 6. Evaluation: REVENUE BETWEEN DATES
     print(f"\nREVENUE BETWEEN {START_DATE_REVENUE} AND {END_DATE_REVENUE}:")
-    dates_revenue = revenue_between_report(START_DATE_REVENUE, END_DATE_REVENUE)
+    dates_revenue = revenue_between_report(conn, START_DATE_REVENUE, END_DATE_REVENUE)
     print(f"   Total revenue: {dates_revenue}€")
+
 
     conn.close()
     

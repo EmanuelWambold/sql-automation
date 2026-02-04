@@ -18,9 +18,11 @@ Dieses Demo-Projekt wurde für meine Werkstudenten-Bewerbung erstellt, um prakti
 ## Projektstruktur
 ```text
 sql-automation/
-├── README.md
+├── .env.example    # Vorlage für Umgebungsvariablen (DB-Zugangsdaten)
+├── .gitignore      # Verhindert, dass sensible Daten (.env) hochgeladen werden
+├── README.md       # Dokumentation und Setup-Anleitung
 ├── main.py         # Hauptprogramm + Demo-Daten + Reports
-└── schema.sql      # Datenbankschema (Tabellen, ENUMs, Index, View)
+└── schema.sql      # Datenbankdefinition (Tabellen, ENUMs, Indizes, View)
 ```
 
 ## Setup (~2 Minuten)
